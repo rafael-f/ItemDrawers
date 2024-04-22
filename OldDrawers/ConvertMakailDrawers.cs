@@ -9,20 +9,20 @@ namespace kg_ItemDrawers;
 
 public static class ConvertMakailDrawers
 {
-    [HarmonyPatch(typeof(ZDOMan),nameof(ZDOMan.Load))]
+    [HarmonyPatch(typeof(ZDOMan), nameof(ZDOMan.Load))]
     private static class ZDOMan_Load_Patch
     {
         private static readonly int ToSearch = "piece_drawer".GetStableHashCode();
-        
+
         private static void TryConvert(List<ZDO> list)
         {
-            List<ZDO> oldDrawers = list.FindAll(zdo => zdo.m_prefab == ToSearch);
+            List<ZDO> oldDrawers = list.FindAll(zdo => zdo.GetPrefab() == ToSearch);
             if (oldDrawers.Count == 0) return;
             foreach (ZDO zdo in oldDrawers)
             {
-                zdo.m_prefab = "kg_ItemDrawer_Wood".GetStableHashCode();
-                zdo.m_position += new Vector3(0.25f, 0.33f, 0.25f);
-                zdo.m_rotation += new Vector3(0f, 180f, 0f);
+                zdo.SetPrefab("kg_ItemDrawer_Wood".GetStableHashCode());
+                zdo.SetPosition(zdo.GetPosition() + new Vector3(0.25f, 0.33f, 0.25f));
+                zdo.SetRotation(Quaternion.Euler(zdo.GetRotation().eulerAngles + new Vector3(0f, 180f, 0f)));
                 string items = ZDOExtraData.GetString(zdo.m_uid, ZDOVars.s_items);
                 ZDOExtraData.Release(zdo, zdo.m_uid);
                 if (string.IsNullOrEmpty(items)) continue;
@@ -36,10 +36,10 @@ public static class ConvertMakailDrawers
                     zdo.Set("Prefab", item);
                     zdo.Set("Amount", amount);
                 }
-                catch{}
+                catch { }
             }
         }
-        
+
         [UsedImplicitly]
         private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> code)
         {

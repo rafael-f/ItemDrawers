@@ -17,8 +17,8 @@ public class DrawerComponent : MonoBehaviour, Interactable, Hoverable
     private static Sprite _defaultSprite;
     public ZNetView _znv { private set; get; }
     private Image _image;
-    private TMP_Text _text; 
-    
+    private TMP_Text _text;
+
     //UI
     private static bool ShowUI;
     private static DrawerOptions CurrentOptions;
@@ -26,26 +26,26 @@ public class DrawerComponent : MonoBehaviour, Interactable, Hoverable
 
     public string CurrentPrefab
     {
-        get => _znv.m_zdo.GetString("Prefab");
-        set => _znv.m_zdo.Set("Prefab", value);
+        get => _znv.GetZDO().GetString("Prefab");
+        set => _znv.GetZDO().Set("Prefab", value);
     }
 
     public int CurrentAmount
     {
-        get => _znv.m_zdo.GetInt("Amount");
-        set => _znv.m_zdo.Set("Amount", value);
+        get => _znv.GetZDO().GetInt("Amount");
+        set => _znv.GetZDO().Set("Amount", value);
     }
 
     public int PickupRange
     {
-        get => _znv.m_zdo.GetInt("PickupRange", ItemDrawers.DrawerPickupRange.Value);
-        set => _znv.m_zdo.Set("PickupRange", value);
+        get => _znv.GetZDO().GetInt("PickupRange", ItemDrawers.DrawerPickupRange.Value);
+        set => _znv.GetZDO().Set("PickupRange", value);
     }
 
-    private Color CurrentColor 
+    private Color CurrentColor
     {
-        get => global::Utils.Vec3ToColor(_znv.m_zdo.GetVec3("Color", ItemDrawers.DefaultColor.Value));
-        set => _znv.m_zdo.Set("Color", global::Utils.ColorToVec3(value));
+        get => global::Utils.Vec3ToColor(_znv.GetZDO().GetVec3("Color", ItemDrawers.DefaultColor.Value));
+        set => _znv.GetZDO().Set("Color", global::Utils.ColorToVec3(value));
     }
 
     public bool ItemValid => !string.IsNullOrEmpty(CurrentPrefab) && ObjectDB.instance.m_itemByHash.ContainsKey(CurrentPrefab.GetStableHashCode());
@@ -188,8 +188,8 @@ public class DrawerComponent : MonoBehaviour, Interactable, Hoverable
     {
         if (!PrivateArea.CheckAccess(transform.position))
             return true;
-        
-        
+
+
         if (!ItemValid) return false;
 
         if (user.IsCrouching())
@@ -271,7 +271,7 @@ public class DrawerComponent : MonoBehaviour, Interactable, Hoverable
     {
         return "Item Drawer";
     }
-    
+
     private const int windowWidth = 300;
     private const int windowHeight = 300;
     private const int halfWindowWidth = windowWidth / 2;
@@ -312,7 +312,7 @@ public class DrawerComponent : MonoBehaviour, Interactable, Hoverable
         CurrentOptions.color = new Color32(r, g, b, 255);
         int pickupRange = CurrentOptions.pickupRange;
         GUILayout.Space(16f);
-        GUILayout.Label($"Pickup Range: <color={(pickupRange > 0 ? "lime" : "red")}><b>{pickupRange}</b></color>"); 
+        GUILayout.Label($"Pickup Range: <color={(pickupRange > 0 ? "lime" : "red")}><b>{pickupRange}</b></color>");
         pickupRange = (int)GUILayout.HorizontalSlider(pickupRange, 0, ItemDrawers.MaxDrawerPickupRange.Value);
         CurrentOptions.pickupRange = pickupRange;
         GUILayout.Space(16f);
@@ -332,7 +332,7 @@ public class DrawerComponent : MonoBehaviour, Interactable, Hoverable
             yield return AccessTools.Method(typeof(TextInput), nameof(TextInput.IsVisible));
             yield return AccessTools.Method(typeof(StoreGui), nameof(StoreGui.IsVisible));
         }
-        
+
         [HarmonyPostfix, UsedImplicitly]
         private static void SetTrue(ref bool __result) => __result |= ShowUI;
     }

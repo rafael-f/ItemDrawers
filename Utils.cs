@@ -45,7 +45,7 @@ public static class Utils
         Player p = Player.m_localPlayer;
         if (!p || !prefab) return;
         if (prefab.GetComponent<ItemDrop>() is not { } item) return;
-        
+
         if (item.m_itemData.m_shared.m_maxStackSize > 1)
         {
             while (stack > 0)
@@ -64,7 +64,7 @@ public static class Utils
             }
         }
         else
-        { 
+        {
             for (int i = 0; i < stack; ++i)
             {
                 GameObject go = Object.Instantiate(prefab, p.transform.position + Vector3.up * 1.5f, Quaternion.identity);
