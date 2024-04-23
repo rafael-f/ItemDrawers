@@ -48,9 +48,9 @@ public class DrawerComponent : MonoBehaviour, Interactable, Hoverable
         set => _znv.GetZDO().Set("Color", global::Utils.ColorToVec3(value));
     }
 
-    public bool ItemValid => !string.IsNullOrEmpty(CurrentPrefab) && ObjectDB.instance.m_itemByHash.ContainsKey(CurrentPrefab.GetStableHashCode());
-    private int ItemMaxStack => ObjectDB.instance.m_itemByHash[CurrentPrefab.GetStableHashCode()].GetComponent<ItemDrop>().m_itemData.m_shared.m_maxStackSize;
-    private string LocalizedName => ObjectDB.instance.m_itemByHash[CurrentPrefab.GetStableHashCode()].GetComponent<ItemDrop>().m_itemData.m_shared.m_name.Localize();
+    public bool ItemValid => !string.IsNullOrEmpty(CurrentPrefab) && ObjectDB.instance.GetItemPrefab(CurrentPrefab.GetStableHashCode()) != null;
+    private int ItemMaxStack => ObjectDB.instance.GetItemPrefab(CurrentPrefab.GetStableHashCode()).GetComponent<ItemDrop>().m_itemData.m_shared.m_maxStackSize;
+    private string LocalizedName => ObjectDB.instance.GetItemPrefab(CurrentPrefab.GetStableHashCode()).GetComponent<ItemDrop>().m_itemData.m_shared.m_name.Localize();
 
     private struct DrawerOptions : ISerializableParameter
     {
@@ -165,7 +165,11 @@ public class DrawerComponent : MonoBehaviour, Interactable, Hoverable
         if (!DoRepeat) return;
 
         Vector3 vector = transform.position + Vector3.up;
-        foreach (ItemDrop component in ItemDrop.s_instances.Where(drop => Vector3.Distance(drop.transform.position, vector) < PickupRange))
+
+        var traverse = Traverse.Create<ItemDrop>();
+        List<ItemDrop> s_instances = traverse.Field("s_instances").GetValue<List<ItemDrop>>();
+
+        foreach (ItemDrop component in s_instances.Where(drop => Vector3.Distance(drop.transform.position, vector) < PickupRange))
         {
             string goName = global::Utils.GetPrefabName(component.gameObject);
             if (goName != CurrentPrefab) continue;
@@ -177,7 +181,11 @@ public class DrawerComponent : MonoBehaviour, Interactable, Hoverable
 
             Instantiate(ItemDrawers.Explosion, component.transform.position, Quaternion.identity);
             int amount = component.m_itemData.m_stack;
-            component.m_nview.ClaimOwnership();
+
+            var traverse2 = Traverse.Create(component);
+            ZNetView m_nview = traverse2.Field("m_nview").GetValue<ZNetView>();
+
+            m_nview.ClaimOwnership();
             ZNetScene.instance.Destroy(component.gameObject);
             CurrentAmount += amount;
             _znv.InvokeRPC(ZNetView.Everybody, "UpdateIcon", CurrentPrefab, CurrentAmount);
@@ -232,7 +240,12 @@ public class DrawerComponent : MonoBehaviour, Interactable, Hoverable
 
         int amount = item.m_stack;
         if (amount <= 0) return false;
-        user.m_inventory.RemoveItem(item);
+
+        var traverse = Traverse.Create(user);
+        Inventory m_inventory = traverse.Field("m_inventory").GetValue<Inventory>();
+
+        m_inventory.RemoveItem(item);
+
         _znv.InvokeRPC("AddItem_Request", dropPrefab, amount);
         return true;
     }

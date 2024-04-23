@@ -1,4 +1,6 @@
-﻿using System;
+﻿using HarmonyLib;
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -11,7 +13,14 @@ public static class Utils
     public static int CustomCountItems(string prefab, int level)
     {
         int num = 0;
-        foreach (ItemDrop.ItemData itemData in Player.m_localPlayer.m_inventory.m_inventory)
+
+        var traverse = Traverse.Create(Player.m_localPlayer);
+        Inventory m_inventory = traverse.Field("m_inventory").GetValue<Inventory>();
+
+        var traverse2 = Traverse.Create(m_inventory);
+        List<ItemDrop.ItemData> m_inventory2 = traverse2.Field("m_inventory").GetValue<List<ItemDrop.ItemData>>();
+
+        foreach (ItemDrop.ItemData itemData in m_inventory2)
         {
             if (itemData.m_dropPrefab.name == prefab && level == itemData.m_quality)
             {
@@ -24,7 +33,13 @@ public static class Utils
 
     public static void CustomRemoveItems(string prefab, int amount, int level)
     {
-        foreach (ItemDrop.ItemData itemData in Player.m_localPlayer.m_inventory.m_inventory)
+        var traverse = Traverse.Create(Player.m_localPlayer);
+        Inventory m_inventory = traverse.Field("m_inventory").GetValue<Inventory>();
+
+        var traverse2 = Traverse.Create(m_inventory);
+        List<ItemDrop.ItemData> m_inventory2 = traverse2.Field("m_inventory").GetValue<List<ItemDrop.ItemData>>();
+
+        foreach (ItemDrop.ItemData itemData in m_inventory2)
         {
             if (itemData.m_dropPrefab.name == prefab && itemData.m_quality == level)
             {
@@ -36,8 +51,10 @@ public static class Utils
             }
         }
 
-        Player.m_localPlayer.m_inventory.m_inventory.RemoveAll(x => x.m_stack <= 0);
-        Player.m_localPlayer.m_inventory.Changed();
+        m_inventory2.RemoveAll(x => x.m_stack <= 0);
+
+        var traverse3 = Traverse.Create(m_inventory);
+        traverse3.Method("Changed");
     }
 
     public static void InstantiateItem(GameObject prefab, int stack, int level)
@@ -45,6 +62,9 @@ public static class Utils
         Player p = Player.m_localPlayer;
         if (!p || !prefab) return;
         if (prefab.GetComponent<ItemDrop>() is not { } item) return;
+
+        var traverse = Traverse.Create(p);
+        Inventory m_inventory = traverse.Field("m_inventory").GetValue<Inventory>();
 
         if (item.m_itemData.m_shared.m_maxStackSize > 1)
         {
@@ -55,10 +75,13 @@ public static class Utils
                 ItemDrop itemDrop = Object.Instantiate(prefab, p.transform.position + Vector3.up * 1.5f, Quaternion.identity).GetComponent<ItemDrop>();
                 itemDrop.m_itemData.m_stack = addStack;
                 itemDrop.m_itemData.m_durability = item.m_itemData.GetMaxDurability();
-                itemDrop.Save();
-                if (p.m_inventory.CanAddItem(itemDrop.gameObject))
+
+                var traverse2 = Traverse.Create(itemDrop);
+                traverse2.Method("Save");
+
+                if (m_inventory.CanAddItem(itemDrop.gameObject))
                 {
-                    p.m_inventory.AddItem(itemDrop.m_itemData);
+                    m_inventory.AddItem(itemDrop.m_itemData);
                     ZNetScene.instance.Destroy(itemDrop.gameObject);
                 }
             }
@@ -71,10 +94,13 @@ public static class Utils
                 ItemDrop itemDrop = go.GetComponent<ItemDrop>();
                 itemDrop.m_itemData.m_quality = level;
                 itemDrop.m_itemData.m_durability = itemDrop.m_itemData.GetMaxDurability();
-                itemDrop.Save();
-                if (p.m_inventory.CanAddItem(go))
+
+                var traverse2 = Traverse.Create(itemDrop);
+                traverse2.Method("Save");
+
+                if (m_inventory.CanAddItem(go))
                 {
-                    p.m_inventory.AddItem(itemDrop.m_itemData);
+                    m_inventory.AddItem(itemDrop.m_itemData);
                     ZNetScene.instance.Destroy(go);
                 }
             }
@@ -94,7 +120,9 @@ public static class Utils
             itemDrop.m_itemData.m_stack = addStack;
             float durability = item.m_itemData.GetMaxDurability();
             itemDrop.m_itemData.m_durability = durability;
-            itemDrop.Save();
+
+            var traverse2 = Traverse.Create(itemDrop);
+            traverse2.Method("Save");
         }
     }
 }

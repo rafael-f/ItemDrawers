@@ -45,10 +45,10 @@ public class ExtensionList
     public readonly List<ExtensionConfig> ExtensionStations = new();
 
     public void Set(CraftingTable table, int maxStationDistance = 5) => ExtensionStations.Add(new ExtensionConfig
-        { Table = table, maxStationDistance = maxStationDistance });
+    { Table = table, maxStationDistance = maxStationDistance });
 
     public void Set(string customTable, int maxStationDistance = 5) => ExtensionStations.Add(new ExtensionConfig
-        { Table = CraftingTable.Custom, custom = customTable, maxStationDistance = maxStationDistance });
+    { Table = CraftingTable.Custom, custom = customTable, maxStationDistance = maxStationDistance });
 }
 
 public struct ExtensionConfig
@@ -66,7 +66,7 @@ public class CraftingStationList
     public void Set(CraftingTable table) => Stations.Add(new CraftingStationConfig { Table = table });
 
     public void Set(string customTable) => Stations.Add(new CraftingStationConfig
-        { Table = CraftingTable.Custom, custom = customTable });
+    { Table = CraftingTable.Custom, custom = customTable });
 }
 
 public struct CraftingStationConfig
@@ -93,7 +93,7 @@ public class RequiredResourcesList
     public readonly List<Requirement> Requirements = new();
 
     public void Add(string item, int amount, bool recover) => Requirements.Add(new Requirement
-        { itemName = item, amount = amount, recover = recover });
+    { itemName = item, amount = amount, recover = recover });
 }
 
 public struct Requirement
@@ -300,15 +300,21 @@ public class BuildPiece
 
                 int order = 0;
 
-                cfg.category = config(englishName, "Build Table Category",
+                cfg.category = config(
+                    englishName,
+                    "Build Table Category",
                     piece.Category.Category,
-                    new ConfigDescription($"Build Category where {localizedName} is available.", null,
-                        new ConfigurationManagerAttributes { Order = --order, Category = localizedName }));
+                    new ConfigDescription($"Build Category where {localizedName} is available.",
+                    null,
+                    new ConfigurationManagerAttributes { Order = --order, Category = localizedName }));
+
                 ConfigurationManagerAttributes customTableAttributes = new()
                 {
-                    Order = --order, Browsable = cfg.category.Value == BuildPieceCategory.Custom,
+                    Order = --order,
+                    Browsable = cfg.category.Value == BuildPieceCategory.Custom,
                     Category = localizedName,
                 };
+
                 cfg.customCategory = config(englishName, "Custom Build Category",
                     piece.Category.custom,
                     new ConfigDescription("", null, customTableAttributes));
@@ -351,11 +357,16 @@ public class BuildPiece
                 cfg.tools = config(englishName, "Tools",
                     string.Join(", ", piece.activeTools),
                     new ConfigDescription($"Comma separated list of tools where {localizedName} is available.", null, customTableAttributes));
+
                 piece.activeTools = cfg.tools.Value.Split(',').Select(s => s.Trim()).ToArray();
                 cfg.tools.SettingChanged += (_, _) =>
                 {
-                    Inventory[] inventories = Player.s_players.Select(p => p.GetInventory()).Concat(Object.FindObjectsOfType<Container>().Select(c => c.GetInventory())).Where(c => c is not null).ToArray();
-                    Dictionary<string, List<PieceTable>> tools = ObjectDB.instance.m_items.Select(p => p.GetComponent<ItemDrop>()).Where(c => c && c.GetComponent<ZNetView>()).Concat(ItemDrop.s_instances).Select(i => new KeyValuePair<string, ItemDrop.ItemData>(Utils.GetPrefabName(i.gameObject), i.m_itemData)).Concat(inventories.SelectMany(i => i.GetAllItems()).Select(i => new KeyValuePair<string, ItemDrop.ItemData>(i.m_dropPrefab.name, i))).Where(kv => kv.Value.m_shared.m_buildPieces).GroupBy(kv => kv.Key).ToDictionary(g => g.Key, g => g.Select(kv => kv.Value.m_shared.m_buildPieces).Distinct().ToList());
+                    Inventory[] inventories = Player.GetAllPlayers().Select(p => p.GetInventory()).Concat(Object.FindObjectsOfType<Container>().Select(c => c.GetInventory())).Where(c => c is not null).ToArray();
+
+                    var traverse = Traverse.Create<ItemDrop>();
+                    List<ItemDrop> s_instances = traverse.Field("s_instances").GetValue<List<ItemDrop>>();
+
+                    Dictionary<string, List<PieceTable>> tools = ObjectDB.instance.m_items.Select(p => p.GetComponent<ItemDrop>()).Where(c => c && c.GetComponent<ZNetView>()).Concat(s_instances).Select(i => new KeyValuePair<string, ItemDrop.ItemData>(Utils.GetPrefabName(i.gameObject), i.m_itemData)).Concat(inventories.SelectMany(i => i.GetAllItems()).Select(i => new KeyValuePair<string, ItemDrop.ItemData>(i.m_dropPrefab.name, i))).Where(kv => kv.Value.m_shared.m_buildPieces).GroupBy(kv => kv.Key).ToDictionary(g => g.Key, g => g.Select(kv => kv.Value.m_shared.m_buildPieces).Distinct().ToList());
 
                     foreach (string tool in piece.activeTools)
                     {
@@ -385,9 +396,12 @@ public class BuildPiece
                             }
                         }
 
-                        if (Player.m_localPlayer && Player.m_localPlayer.m_buildPieces)
+                        var traversem_localPlayer = Traverse.Create(Player.m_localPlayer);
+                        PieceTable instancesm_buildPieces = traversem_localPlayer.Field("m_buildPieces").GetValue<PieceTable>();
+
+                        if (Player.m_localPlayer && instancesm_buildPieces)
                         {
-                            Player.m_localPlayer.SetPlaceMode(Player.m_localPlayer.m_buildPieces);
+                            traversem_localPlayer.Method("SetPlaceMode", instancesm_buildPieces);
                         }
                     }
                 };
@@ -445,7 +459,7 @@ public class BuildPiece
                     cfg.maxStationDistance.SettingChanged += ExtensionTableConfigChanged;
 
                     ConfigurationManagerAttributes tableLevelAttributes = new()
-                        { Order = --order, Browsable = cfg.extensionTable.Value != CraftingTable.None };
+                    { Order = --order, Browsable = cfg.extensionTable.Value != CraftingTable.None };
                     hideWhenNoneAttributes.Add(tableLevelAttributes);
                 }
 
@@ -497,14 +511,14 @@ public class BuildPiece
                     cfg.customTable.SettingChanged += TableConfigChanged;
 
                     ConfigurationManagerAttributes tableLevelAttributes = new()
-                        { Order = --order, Browsable = cfg.table.Value != CraftingTable.None };
+                    { Order = --order, Browsable = cfg.table.Value != CraftingTable.None };
                     hideWhenNoneAttributes.Add(tableLevelAttributes);
                 }
 
                 ConfigEntry<string> itemConfig(string name, string value, string desc)
                 {
                     ConfigurationManagerAttributes attributes = new()
-                        { CustomDrawer = DrawConfigTable, Order = --order, Category = localizedName };
+                    { CustomDrawer = DrawConfigTable, Order = --order, Category = localizedName };
                     return config(englishName, name, value, new ConfigDescription(desc, null, attributes));
                 }
 
@@ -610,24 +624,24 @@ public class BuildPiece
                             $"Custom crafting station '{(cfg == null || piece.Extension.ExtensionStations.Count > 0 ? station.custom : cfg.customExtentionTable.Value)}' does not exist");
                         break;
                     default:
-                    {
-                        if (cfg != null && cfg.table.Value == CraftingTable.None)
                         {
-                            piece.Prefab.GetComponent<StationExtension>().m_craftingStation = null;
-                        }
-                        else
-                        {
-                            piece.Prefab.GetComponent<StationExtension>().m_craftingStation = ZNetScene.instance
-                                .GetPrefab(((InternalName)typeof(CraftingTable).GetMember(
-                                    (cfg == null || piece.Extension.ExtensionStations.Count > 0
-                                        ? station.Table
-                                        : cfg.extensionTable.Value)
-                                    .ToString())[0].GetCustomAttributes(typeof(InternalName)).First()).internalName)
-                                .GetComponent<CraftingStation>();
-                        }
+                            if (cfg != null && cfg.table.Value == CraftingTable.None)
+                            {
+                                piece.Prefab.GetComponent<StationExtension>().m_craftingStation = null;
+                            }
+                            else
+                            {
+                                piece.Prefab.GetComponent<StationExtension>().m_craftingStation = ZNetScene.instance
+                                    .GetPrefab(((InternalName)typeof(CraftingTable).GetMember(
+                                        (cfg == null || piece.Extension.ExtensionStations.Count > 0
+                                            ? station.Table
+                                            : cfg.extensionTable.Value)
+                                        .ToString())[0].GetCustomAttributes(typeof(InternalName)).First()).internalName)
+                                    .GetComponent<CraftingStation>();
+                            }
 
-                        break;
-                    }
+                            break;
+                        }
                 }
             }
 
@@ -650,22 +664,22 @@ public class BuildPiece
                             $"Custom crafting station '{(cfg == null || piece.Crafting.Stations.Count > 0 ? station.custom : cfg.customTable.Value)}' does not exist");
                         break;
                     default:
-                    {
-                        if (cfg != null && cfg.table.Value == CraftingTable.None)
                         {
-                            piece.Prefab.GetComponent<Piece>().m_craftingStation = null;
-                        }
-                        else
-                        {
-                            piece.Prefab.GetComponent<Piece>().m_craftingStation = ZNetScene.instance
-                                .GetPrefab(((InternalName)typeof(CraftingTable).GetMember(
-                                    (cfg == null || piece.Crafting.Stations.Count > 0 ? station.Table : cfg.table.Value)
-                                    .ToString())[0].GetCustomAttributes(typeof(InternalName)).First()).internalName)
-                                .GetComponent<CraftingStation>();
-                        }
+                            if (cfg != null && cfg.table.Value == CraftingTable.None)
+                            {
+                                piece.Prefab.GetComponent<Piece>().m_craftingStation = null;
+                            }
+                            else
+                            {
+                                piece.Prefab.GetComponent<Piece>().m_craftingStation = ZNetScene.instance
+                                    .GetPrefab(((InternalName)typeof(CraftingTable).GetMember(
+                                        (cfg == null || piece.Crafting.Stations.Count > 0 ? station.Table : cfg.table.Value)
+                                        .ToString())[0].GetCustomAttributes(typeof(InternalName)).First()).internalName)
+                                    .GetComponent<CraftingStation>();
+                            }
 
-                        break;
-                    }
+                            break;
+                        }
                 }
             }
             piece.conversions = new List<Smelter.ItemConversion>();
@@ -1111,16 +1125,25 @@ public class AdminSyncing
 
         IEnumerator WatchAdminListChanges()
         {
-            List<string> currentList = new(ZNet.instance.m_adminList.GetList());
-            for (;;)
+            var znet = Traverse.Create(ZNet.instance);
+            SyncedList instances = znet.Field("m_adminList").GetValue<SyncedList>();
+
+            List<string> currentList = new(instances.GetList());
+            for (; ; )
             {
                 yield return new WaitForSeconds(30);
-                if (!ZNet.instance.m_adminList.GetList().SequenceEqual(currentList))
+
+                var znet2 = Traverse.Create(ZNet.instance);
+                SyncedList instances2 = znet2.Field("m_adminList").GetValue<SyncedList>();
+
+                if (!instances2.GetList().SequenceEqual(currentList))
                 {
-                    currentList = new List<string>(ZNet.instance.m_adminList.GetList());
+                    currentList = new List<string>(instances2.GetList());
+
                     List<ZNetPeer> adminPeer = ZNet.instance.GetPeers().Where(p =>
-                            ZNet.instance.ListContainsId(ZNet.instance.m_adminList, p.m_rpc.GetSocket().GetHostName()))
+                    ZNet.instance.IsAdmin(p.m_rpc.GetSocket().GetHostName()))
                         .ToList();
+
                     List<ZNetPeer> nonAdminPeer = ZNet.instance.GetPeers().Except(adminPeer).ToList();
                     SendAdmin(nonAdminPeer, false);
                     SendAdmin(adminPeer, true);
@@ -1215,7 +1238,7 @@ public class AdminSyncing
         {
             ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.Everybody,
                 BuildPiece._plugin?.Info.Metadata.Name + " PMAdminStatusSync", new ZPackage());
-            if (ZNet.instance.ListContainsId(ZNet.instance.m_adminList, currentPeer.m_rpc.GetSocket().GetHostName()))
+            if (ZNet.instance.IsAdmin(currentPeer.m_rpc.GetSocket().GetHostName()))
             {
                 ZPackage pkg = new();
                 pkg.Write(true);
@@ -1268,7 +1291,7 @@ public class AdminSyncing
     }
 }
 
-[HarmonyPatch(typeof(ZNet), nameof(ZNet.OnNewConnection))]
+[HarmonyPatch(typeof(ZNet), "OnNewConnection")]
 class RegisterClientRPCPatch
 {
     private static void Postfix(ZNet __instance, ZNetPeer peer)
@@ -1281,7 +1304,7 @@ class RegisterClientRPCPatch
         else
         {
             ZPackage packge = new();
-            packge.Write(__instance.ListContainsId(__instance.m_adminList, peer.m_rpc.GetSocket().GetHostName()));
+            packge.Write(__instance.IsAdmin(peer.m_rpc.GetSocket().GetHostName()));
 
             peer.m_rpc.Invoke(BuildPiece._plugin?.Info.Metadata.Name + " PMAdminStatusSync", packge);
         }
@@ -1296,15 +1319,15 @@ public static class PiecePrefabManager
     static PiecePrefabManager()
     {
         Harmony harmony = new("org.bepinex.helpers.PieceManager");
-        harmony.Patch(AccessTools.DeclaredMethod(typeof(FejdStartup), nameof(FejdStartup.Awake)), new HarmonyMethod(AccessTools.DeclaredMethod(typeof(BuildPiece), nameof(BuildPiece.Patch_FejdStartup))));
+        harmony.Patch(AccessTools.DeclaredMethod(typeof(FejdStartup), "Awake"), new HarmonyMethod(AccessTools.DeclaredMethod(typeof(BuildPiece), nameof(BuildPiece.Patch_FejdStartup))));
         harmony.Patch(AccessTools.DeclaredMethod(typeof(Localization), nameof(Localization.LoadCSV)), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(LocalizeKey), nameof(LocalizeKey.AddLocalizedKeys))));
         harmony.Patch(AccessTools.DeclaredMethod(typeof(Localization), nameof(Localization.SetupLanguage)), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(LocalizationCache), nameof(LocalizationCache.LocalizationPostfix))));
-        harmony.Patch(AccessTools.DeclaredMethod(typeof(ObjectDB), nameof(ObjectDB.Awake)), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(PiecePrefabManager), nameof(Patch_ObjectDBInit))));
-        harmony.Patch(AccessTools.DeclaredMethod(typeof(ObjectDB), nameof(ObjectDB.Awake)), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(BuildPiece), nameof(BuildPiece.Patch_ObjectDBInit))));
+        harmony.Patch(AccessTools.DeclaredMethod(typeof(ObjectDB), "Awake"), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(PiecePrefabManager), nameof(Patch_ObjectDBInit))));
+        harmony.Patch(AccessTools.DeclaredMethod(typeof(ObjectDB), "Awake"), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(BuildPiece), nameof(BuildPiece.Patch_ObjectDBInit))));
         harmony.Patch(AccessTools.DeclaredMethod(typeof(ObjectDB), nameof(ObjectDB.CopyOtherDB)), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(PiecePrefabManager), nameof(Patch_ObjectDBInit))));
-        harmony.Patch(AccessTools.DeclaredMethod(typeof(ZNet), nameof(ZNet.Awake)), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(AdminSyncing), nameof(AdminSyncing.AdminStatusSync))));
-        harmony.Patch(AccessTools.DeclaredMethod(typeof(ZNetScene), nameof(ZNetScene.Awake)), new HarmonyMethod(AccessTools.DeclaredMethod(typeof(PiecePrefabManager), nameof(Patch_ZNetSceneAwake))));
-        harmony.Patch(AccessTools.DeclaredMethod(typeof(ZNetScene), nameof(ZNetScene.Awake)), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(PiecePrefabManager), nameof(RefFixPatch_ZNetSceneAwake))));
+        harmony.Patch(AccessTools.DeclaredMethod(typeof(ZNet), "Awake"), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(AdminSyncing), nameof(AdminSyncing.AdminStatusSync))));
+        harmony.Patch(AccessTools.DeclaredMethod(typeof(ZNetScene), "Awake"), new HarmonyMethod(AccessTools.DeclaredMethod(typeof(PiecePrefabManager), nameof(Patch_ZNetSceneAwake))));
+        harmony.Patch(AccessTools.DeclaredMethod(typeof(ZNetScene), "Awake"), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(PiecePrefabManager), nameof(RefFixPatch_ZNetSceneAwake))));
 
         harmony.Patch(AccessTools.DeclaredMethod(typeof(PieceTable), nameof(PieceTable.PrevCategory)), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(PiecePrefabManager), nameof(Patch_PieceTable_PrevCategory))));
         harmony.Patch(AccessTools.DeclaredMethod(typeof(PieceTable), nameof(PieceTable.PrevCategory)), transpiler: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(PiecePrefabManager), nameof(PrevCategory_Transpiler))));
@@ -1313,8 +1336,8 @@ public static class PiecePrefabManager
         harmony.Patch(AccessTools.DeclaredMethod(typeof(PieceTable), nameof(PieceTable.SetCategory)), transpiler: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(PiecePrefabManager), nameof(SetCategory_Transpiler))));
         harmony.Patch(AccessTools.DeclaredMethod(typeof(PieceTable), nameof(PieceTable.UpdateAvailable)), transpiler: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(PiecePrefabManager), nameof(UpdateAvailable_Transpiler))));
         harmony.Patch(AccessTools.DeclaredMethod(typeof(PieceTable), nameof(PieceTable.UpdateAvailable)), prefix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(PiecePrefabManager), nameof(UpdateAvailable_Prefix))), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(PiecePrefabManager), nameof(UpdateAvailable_Postfix))));
-        harmony.Patch(AccessTools.DeclaredMethod(typeof(Player), nameof(Player.SetPlaceMode)), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(PiecePrefabManager), nameof(Patch_SetPlaceMode))));
-        harmony.Patch(AccessTools.DeclaredMethod(typeof(Hud), nameof(Hud.Awake)), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(PiecePrefabManager), nameof(Hud_AwakeCreateTabs))));
+        harmony.Patch(AccessTools.DeclaredMethod(typeof(Player), "SetPlaceMode"), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(PiecePrefabManager), nameof(Patch_SetPlaceMode))));
+        harmony.Patch(AccessTools.DeclaredMethod(typeof(Hud), "Awake"), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(PiecePrefabManager), nameof(Hud_AwakeCreateTabs))));
         harmony.Patch(AccessTools.DeclaredMethod(typeof(Enum), nameof(Enum.GetValues)), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(PiecePrefabManager), nameof(EnumGetValuesPatch))));
         harmony.Patch(AccessTools.DeclaredMethod(typeof(Enum), nameof(Enum.GetNames)), postfix: new HarmonyMethod(AccessTools.DeclaredMethod(typeof(PiecePrefabManager), nameof(EnumGetNamesPatch))));
     }
@@ -1478,10 +1501,13 @@ public static class PiecePrefabManager
     {
         int maxCategory = MaxCategory();
 
+        var Hudinstance = Traverse.Create(Hud.instance);
+        List<string> m_buildCategoryNames = Hudinstance.Field("m_buildCategoryNames").GetValue<List<string>>();
+
         // Fill empty category names to prevent index issues, the correct names are set by the respective mods later
-        for (int i = Hud.instance.m_buildCategoryNames.Count; i < maxCategory; ++i)
+        for (int i = m_buildCategoryNames.Count; i < maxCategory; ++i)
         {
-            Hud.instance.m_buildCategoryNames.Add("");
+            m_buildCategoryNames.Add("");
         }
 
         // Append tabs and their names to the GUI for every custom category not already added
@@ -1491,11 +1517,21 @@ public static class PiecePrefabManager
             Hud.instance.m_pieceCategoryTabs = Hud.instance.m_pieceCategoryTabs.AddItem(tab).ToArray();
         }
 
-        if (Player.m_localPlayer && Player.m_localPlayer.m_buildPieces)
+        var traversem_localPlayer = Traverse.Create(Player.m_localPlayer);
+        PieceTable instancesm_buildPieces = traversem_localPlayer.Field("m_buildPieces").GetValue<PieceTable>();
+
+        if (Player.m_localPlayer && instancesm_buildPieces)
         {
-            RepositionCategories(Player.m_localPlayer.m_buildPieces);
-            Player.m_localPlayer.UpdateAvailablePiecesList();
+            RepositionCategories(instancesm_buildPieces);
+
+            traversem_localPlayer.Method("UpdateAvailablePiecesList");
         }
+    }
+
+    private static void OnLeftClickCategory(UIInputHandler ih)
+    {
+        var traverse = Traverse.Create(Hud.instance);
+        traverse.Method("OnLeftClickCategory", ih);
     }
 
     private static GameObject CreateCategoryTab()
@@ -1504,7 +1540,7 @@ public static class PiecePrefabManager
 
         GameObject newTab = Object.Instantiate(Hud.instance.m_pieceCategoryTabs[0], categoryRoot);
         newTab.SetActive(false);
-        newTab.GetOrAddComponent<UIInputHandler>().m_onLeftDown += Hud.instance.OnLeftClickCategory;
+        newTab.GetOrAddComponent<UIInputHandler>().m_onLeftDown += OnLeftClickCategory;
 
         foreach (TMP_Text text in newTab.GetComponentsInChildren<TMP_Text>())
         {
@@ -1613,7 +1649,10 @@ public static class PiecePrefabManager
             // only update names of own tabs, as translation tokens may be different between mods
             if (PieceCategories.ContainsKey(categoryName))
             {
-                Hud.instance.m_buildCategoryNames[i] = $"${GetCategoryToken(categoryName)}";
+                var traverse = Traverse.Create(Hud.instance);
+                List<string> m_buildCategoryNames = traverse.Field("m_buildCategoryNames").GetValue<List<string>>();
+
+                m_buildCategoryNames[i] = $"${GetCategoryToken(categoryName)}";
             }
         }
 
@@ -1629,9 +1668,15 @@ public static class PiecePrefabManager
             Debug.LogWarning("RefreshCategories: Could not find background image");
         }
 
-        if ((int)Player.m_localPlayer.m_buildPieces.m_selectedCategory >= Hud.instance.m_buildCategoryNames.Count)
+        var traversem_localPlayer = Traverse.Create(Player.m_localPlayer);
+        PieceTable instancesm_buildPieces = traversem_localPlayer.Field("m_buildPieces").GetValue<PieceTable>();
+
+        var traverse2 = Traverse.Create(Hud.instance);
+        List<string> m_buildCategoryNames2 = traverse2.Field("m_buildCategoryNames").GetValue<List<string>>();
+
+        if ((int)instancesm_buildPieces.m_selectedCategory >= m_buildCategoryNames2.Count)
         {
-            Player.m_localPlayer.m_buildPieces.SetCategory((int)visibleCategories.First());
+            instancesm_buildPieces.SetCategory((int)visibleCategories.First());
         }
 
         Hud.instance.GetComponentInParent<Localize>().RefreshLocalization();
@@ -1677,9 +1722,12 @@ public static class PiecePrefabManager
 
     private static void Patch_SetPlaceMode(Player __instance)
     {
-        if (__instance.m_buildPieces)
+        var traverse = Traverse.Create(__instance);
+        PieceTable m_buildPieces = traverse.Field("m_buildPieces").GetValue<PieceTable>();
+
+        if (m_buildPieces)
         {
-            RepositionCategories(__instance.m_buildPieces);
+            RepositionCategories(m_buildPieces);
         }
     }
 
@@ -1715,20 +1763,26 @@ public static class PiecePrefabManager
 
     private static void UpdateAvailable_Prefix(PieceTable __instance)
     {
-        if (__instance.m_availablePieces.Count > 0)
+        var traverse = Traverse.Create(__instance);
+        List<List<Piece>> m_availablePieces = traverse.Field("m_availablePieces").GetValue<List<List<Piece>>>();
+
+        if (m_availablePieces.Count > 0)
         {
-            int missing = MaxCategory() - __instance.m_availablePieces.Count;
+            int missing = MaxCategory() - m_availablePieces.Count;
             for (int i = 0; i < missing; i++)
             {
-                __instance.m_availablePieces.Add(new List<Piece>());
+                m_availablePieces.Add(new List<Piece>());
             }
         }
     }
 
     private static void UpdateAvailable_Postfix(PieceTable __instance)
     {
-        Array.Resize(ref __instance.m_selectedPiece, __instance.m_availablePieces.Count);
-        Array.Resize(ref __instance.m_lastSelectedPiece, __instance.m_availablePieces.Count);
+        var traverse = Traverse.Create(__instance);
+        List<List<Piece>> m_availablePieces = traverse.Field("m_availablePieces").GetValue<List<List<Piece>>>();
+
+        Array.Resize(ref __instance.m_selectedPiece, m_availablePieces.Count);
+        Array.Resize(ref __instance.m_lastSelectedPiece, m_availablePieces.Count);
     }
 
     [HarmonyPriority(Priority.Low)]

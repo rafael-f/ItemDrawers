@@ -105,13 +105,16 @@ namespace kg_ItemDrawers
             new Harmony(GUID).PatchAll();
         }
 
-        [HarmonyPatch(typeof(ZNetScene), nameof(ZNetScene.Awake))]
+        [HarmonyPatch(typeof(ZNetScene), "Awake")]
         private static class ZNetScene_Awake_Patch
         {
             [UsedImplicitly]
             private static void Postfix(ZNetScene __instance)
             {
-                __instance.m_namedPrefabs[Explosion.name.GetStableHashCode()] = Explosion;
+                var traverse = Traverse.Create(__instance);
+                Dictionary<int, GameObject> m_namedPrefabs = traverse.Field("m_namedPrefabs").GetValue<Dictionary<int, GameObject>>();
+
+                m_namedPrefabs[Explosion.name.GetStableHashCode()] = Explosion;
 
                 _drawer_wood.Prefab.GetComponent<Piece>().m_placeEffect = __instance.GetPrefab("woodwall").GetComponent<Piece>().m_placeEffect;
                 _drawer_stone.Prefab.GetComponent<Piece>().m_placeEffect = __instance.GetPrefab("stone_wall_1x1").GetComponent<Piece>().m_placeEffect;
@@ -123,7 +126,7 @@ namespace kg_ItemDrawers
             }
         }
 
-        [HarmonyPatch(typeof(AudioMan), nameof(AudioMan.Awake))]
+        [HarmonyPatch(typeof(AudioMan), "Awake")]
         private static class AudioMan_Awake_Patch
         {
             [UsedImplicitly]
