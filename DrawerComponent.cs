@@ -297,13 +297,19 @@ public class DrawerComponent : MonoBehaviour, Interactable, Hoverable
             Menu.instance.OnClose();
         }
     }
+
     public static void ProcessGUI()
     {
-        if (!ShowUI) return;
+        if (!ShowUI)
+        {
+            return;
+        }
+
         GUI.backgroundColor = Color.white;
         Rect centerOfScreen = new(Screen.width / 2f - halfWindowWidth, Screen.height / 2f - halfWindowHeight, windowWidth, windowHeight);
         GUI.Window(218102318, centerOfScreen, Window, "Item Drawer Options");
     }
+
     private static void Window(int id)
     {
         if (CurrentOptions.drawer == null || !CurrentOptions.drawer._znv.IsValid())
